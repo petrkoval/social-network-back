@@ -9,7 +9,7 @@ import (
 )
 
 func NewPostgreSQLClient(c *config.DBConfig, l *zerolog.Logger) (*pgxpool.Pool, error) {
-	connUrl := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", c.User, c.Password, c.Host, c.Port, c.Database)
+	connUrl := fmt.Sprintf("postgres://%s:%s@%s:%d/%s", c.User, c.Password, c.Host, c.Port, c.Database)
 
 	cfg, err := pgxpool.ParseConfig(connUrl)
 	if err != nil {

@@ -1,6 +1,8 @@
 package config
 
-import "github.com/ilyakaznacheev/cleanenv"
+import (
+	"github.com/ilyakaznacheev/cleanenv"
+)
 
 type Config struct {
 	Server   *ServerConfig `yaml:"server"`
@@ -9,8 +11,10 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Host string `yaml:"host"`
-	Port int    `yaml:"port"`
+	Host         string `yaml:"host"`
+	Port         int    `yaml:"port"`
+	WriteTimeout int    `yaml:"write_timeout"`
+	ReadTimeout  int    `yaml:"read_timeout"`
 }
 
 type DBConfig struct {
