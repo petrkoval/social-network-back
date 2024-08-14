@@ -9,11 +9,6 @@ import (
 	"github.com/petrkoval/social-network-back/internal/domain"
 )
 
-var (
-	insertErr   = errors.New("insert query error")
-	notFoundErr = errors.New("no user found")
-)
-
 type UserStorage struct {
 	client *pgxpool.Pool
 }

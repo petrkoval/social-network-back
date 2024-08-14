@@ -1,10 +1,13 @@
 package services
 
-import "context"
+import (
+	"context"
+	"github.com/petrkoval/social-network-back/internal/domain"
+)
 
 type TokenStorage interface {
-	Find(ctx context.Context, refreshToken string) (string, error)
-	Save(ctx context.Context, refreshToken string) error
+	Find(ctx context.Context, refreshToken string) (*domain.Token, error)
+	Save(ctx context.Context, token domain.Token) error
 	Delete(ctx context.Context, refreshToken string) error
 }
 
