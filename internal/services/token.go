@@ -1,16 +1,18 @@
 package services
 
-type Storage interface {
-	FindRefreshToken(refreshToken string) (string, error)
-	SaveRefreshToken(refreshToken string) error
-	DeleteRefreshToken(refreshToken string) error
+import "context"
+
+type TokenStorage interface {
+	Find(ctx context.Context, refreshToken string) (string, error)
+	Save(ctx context.Context, refreshToken string) error
+	Delete(ctx context.Context, refreshToken string) error
 }
 
 type TokenService struct {
-	storage Storage
+	storage TokenStorage
 }
 
-func NewTokenService(s Storage) *TokenService {
+func NewTokenService(s TokenStorage) *TokenService {
 	return &TokenService{storage: s}
 }
 

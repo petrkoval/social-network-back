@@ -1,15 +1,18 @@
 package auth
 
 import (
+	"context"
 	"github.com/go-chi/chi/v5"
+	"github.com/petrkoval/social-network-back/internal/domain"
+	"github.com/petrkoval/social-network-back/internal/services"
 	"net/http"
 )
 
 type Service interface {
-	Register(dto RegisterUserDTO) (Response, error)
-	Login(dto LoginUserDTO) (Response, error)
-	Logout(refreshToken string) error
-	Refresh(refreshToken string) (Response, error)
+	Register(ctx context.Context, dto domain.CreateUserDTO) (*services.AuthResponse, error)
+	Login(ctx context.Context, dto domain.CreateUserDTO) (*services.AuthResponse, error)
+	Logout(ctx context.Context, refreshToken string) error
+	Refresh(ctx context.Context, refreshToken string) (*services.AuthResponse, error)
 }
 
 type Handler struct {
