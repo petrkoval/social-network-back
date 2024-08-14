@@ -16,14 +16,14 @@ type TokenStorage interface {
 }
 
 type TokenService struct {
-	storage *TokenStorage
+	Storage TokenStorage
 	logger  *zerolog.Logger
 	cfg     *config.TokensConfig
 }
 
-func NewTokenService(s *TokenStorage, l *zerolog.Logger, cfg *config.TokensConfig) *TokenService {
+func NewTokenService(s TokenStorage, l *zerolog.Logger, cfg *config.TokensConfig) *TokenService {
 	return &TokenService{
-		storage: s,
+		Storage: s,
 		logger:  l,
 		cfg:     cfg,
 	}
@@ -61,15 +61,19 @@ func (s *TokenService) GenerateTokens(user domain.User) (accessToken, refreshTok
 
 	accessToken, err = unsignedAccessToken.SignedString([]byte(s.cfg.AccessSecret))
 	if err != nil {
-		return "", "", jwtSigningErr
+		return "", "", JwtSigningErr
 	}
 
 	refreshToken, err = unsignedRefreshToken.SignedString([]byte(s.cfg.RefreshSecret))
 	if err != nil {
-		return "", "", jwtSigningErr
+		return "", "", JwtSigningErr
 	}
 
-	s.logger.Debug().Msg("tokens generated")
+	s.logger.Debug().
+		Str("accessToken", accessToken).
+		Str("refreshToken", refreshToken).
+		Msg("tokens generated")
+
 	return accessToken, refreshToken, nil
 }
 
@@ -78,6 +82,7 @@ func (s *TokenService) VerifyAccessToken(accessToken string) (*domain.User, erro
 		token *jwt.Token
 		err   error
 	)
+	s.logger.Debug().Msg("verifying access token")
 
 	token, err = jwt.ParseWithClaims(accessToken, &domain.TokenClaims{}, s.validateAccessSigningMethod)
 	if err != nil {
@@ -86,16 +91,23 @@ func (s *TokenService) VerifyAccessToken(accessToken string) (*domain.User, erro
 
 	if claims, ok := token.Claims.(*domain.TokenClaims); ok && token.Valid {
 		if claims.ExpiresAt.Before(time.Now()) {
-			return nil, tokenExpiredErr
+			return nil, TokenExpiredErr
 		}
 
-		return &domain.User{
+		entity := &domain.User{
 			ID:       claims.Subject,
 			Username: claims.Username,
-		}, nil
+		}
+
+		s.logger.Debug().
+			Str("userID", entity.ID).
+			Str("Username", entity.Username).
+			Msg("access token verified")
+
+		return entity, nil
 	}
 
-	return nil, invalidTokenErr
+	return nil, InvalidTokenErr
 }
 
 func (s *TokenService) VerifyRefreshToken(refreshToken string) (*domain.User, error) {
@@ -103,6 +115,7 @@ func (s *TokenService) VerifyRefreshToken(refreshToken string) (*domain.User, er
 		token *jwt.Token
 		err   error
 	)
+	s.logger.Debug().Msg("verifying refresh token")
 
 	token, err = jwt.ParseWithClaims(refreshToken, &domain.TokenClaims{}, s.validateRefreshSigningMethod)
 	if err != nil {
@@ -111,21 +124,28 @@ func (s *TokenService) VerifyRefreshToken(refreshToken string) (*domain.User, er
 
 	if claims, ok := token.Claims.(*domain.TokenClaims); ok && token.Valid {
 		if claims.ExpiresAt.Before(time.Now()) {
-			return nil, tokenExpiredErr
+			return nil, TokenExpiredErr
 		}
 
-		return &domain.User{
+		entity := &domain.User{
 			ID:       claims.Subject,
 			Username: claims.Username,
-		}, nil
+		}
+
+		s.logger.Debug().
+			Str("userID", entity.ID).
+			Str("Username", entity.Username).
+			Msg("access token verified")
+
+		return entity, nil
 	}
 
-	return nil, invalidTokenErr
+	return nil, InvalidTokenErr
 }
 
 func (s *TokenService) validateAccessSigningMethod(token *jwt.Token) (interface{}, error) {
 	if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-		return nil, unexpectedSigningMethodErr
+		return nil, UnexpectedSigningMethodErr
 	}
 
 	return []byte(s.cfg.AccessSecret), nil
@@ -133,7 +153,7 @@ func (s *TokenService) validateAccessSigningMethod(token *jwt.Token) (interface{
 
 func (s *TokenService) validateRefreshSigningMethod(token *jwt.Token) (interface{}, error) {
 	if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-		return nil, unexpectedSigningMethodErr
+		return nil, UnexpectedSigningMethodErr
 	}
 
 	return []byte(s.cfg.RefreshSecret), nil

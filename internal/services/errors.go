@@ -3,8 +3,10 @@ package services
 import "errors"
 
 var (
-	jwtSigningErr              = errors.New("error while signing jwt")
-	unexpectedSigningMethodErr = errors.New("unexpected signing method")
-	tokenExpiredErr            = errors.New("token is expired")
-	invalidTokenErr            = errors.New("invalid token")
+	JwtSigningErr              = errors.New("error while signing jwt")
+	UnexpectedSigningMethodErr = errors.New("unexpected signing method")
+	TokenExpiredErr            = errors.New("token is expired")
+	InvalidTokenErr            = errors.New("invalid token")
+
+	UserExistsErr = errors.New("user already exists")
 )

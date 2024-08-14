@@ -26,13 +26,13 @@ func (s *UserStorage) Create(ctx context.Context, dto domain.CreateUserDTO) (*do
 
 	err = pgxscan.Get(ctx, s.client, entity, query, dto.Username, dto.Password)
 	if err != nil {
-		return nil, insertErr
+		return nil, InsertErr
 	}
 
 	return entity, nil
 }
 
-func (s *UserStorage) Find(ctx context.Context, userID string) (*domain.User, error) {
+func (s *UserStorage) FindByID(ctx context.Context, userID string) (*domain.User, error) {
 	var (
 		query  = `SELECT * FROM users WHERE user_id = $1;`
 		entity = &domain.User{}
@@ -43,7 +43,27 @@ func (s *UserStorage) Find(ctx context.Context, userID string) (*domain.User, er
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			return nil, notFoundErr
+			return nil, NotFoundErr
+		default:
+			return nil, err
+		}
+	}
+
+	return entity, nil
+}
+
+func (s *UserStorage) FindByUsername(ctx context.Context, username string) (*domain.User, error) {
+	var (
+		query  = `SELECT * FROM users WHERE username = $1;`
+		entity = &domain.User{}
+		err    error
+	)
+
+	err = pgxscan.Get(ctx, s.client, entity, query, username)
+	if err != nil {
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			return nil, NotFoundErr
 		default:
 			return nil, err
 		}
@@ -63,7 +83,7 @@ func (s *UserStorage) UpdateUsername(ctx context.Context, userID string, usernam
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			return nil, notFoundErr
+			return nil, NotFoundErr
 		default:
 			return nil, err
 		}
@@ -83,7 +103,7 @@ func (s *UserStorage) UpdatePassword(ctx context.Context, userID string, passwor
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			return nil, notFoundErr
+			return nil, NotFoundErr
 		default:
 			return nil, err
 		}
