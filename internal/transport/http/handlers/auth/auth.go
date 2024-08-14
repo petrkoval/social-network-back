@@ -2,9 +2,14 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/petrkoval/social-network-back/internal/domain"
 	"github.com/petrkoval/social-network-back/internal/services"
+	"github.com/petrkoval/social-network-back/internal/storage"
+	"github.com/petrkoval/social-network-back/internal/transport/http/handlers"
+	"github.com/rs/zerolog"
 	"net/http"
 )
 
@@ -17,30 +22,170 @@ type Service interface {
 
 type Handler struct {
 	service Service
-	Router  *chi.Mux
+	logger  *zerolog.Logger
+	router  *chi.Mux
 }
 
-func NewAuthRouter(s Service) *Handler {
+func NewAuthHandler(s Service, l *zerolog.Logger) *Handler {
 	r := chi.NewRouter()
 
 	return &Handler{
 		service: s,
-		Router:  r,
+		logger:  l,
+		router:  r,
 	}
 }
 
-func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) MountOn(router *chi.Mux) {
+	h.router.Post("/register", h.Register)
+	h.router.Post("/login", h.Login)
+	h.router.Post("/logout", h.Logout)
+	h.router.Get("/refresh", h.Refresh)
 
+	router.Mount("/", h.router)
+}
+
+func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
+	var (
+		entity domain.CreateUserDTO
+	)
+
+	_ = json.NewDecoder(r.Body).Decode(&entity)
+
+	response, err := h.service.Register(r.Context(), entity)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.UserExistsErr):
+			h.logger.Error().Stack().Err(err).Msg("User already exists")
+			handlers.WriteErrorResponse(w, r, err, http.StatusConflict)
+			return
+		case errors.Is(err, storage.InsertErr):
+			h.logger.Error().Stack().Err(err).Msg("Insert error")
+			handlers.WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+			return
+		default:
+			h.logger.Error().Stack().Err(err).Msg("unhandled error")
+			handlers.WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	cookie := http.Cookie{
+		Name:     "refresh_token",
+		Value:    response.RefreshToken,
+		MaxAge:   30 * 24 * 60 * 60,
+		HttpOnly: true,
+	}
+
+	http.SetCookie(w, &cookie)
+
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	var (
+		entity domain.CreateUserDTO
+	)
 
+	_ = json.NewDecoder(r.Body).Decode(&entity)
+
+	response, err := h.service.Login(r.Context(), entity)
+	if err != nil {
+		switch {
+		case errors.Is(err, storage.NotFoundUserErr):
+			h.logger.Error().Stack().Err(err).Msg("User not found")
+			handlers.WriteErrorResponse(w, r, err, http.StatusNotFound)
+			return
+		default:
+			h.logger.Error().Stack().Err(err).Msg("unhandled error")
+			handlers.WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	cookie := http.Cookie{
+		Name:     "refresh_token",
+		Value:    response.RefreshToken,
+		MaxAge:   30 * 24 * 60 * 60,
+		HttpOnly: true,
+	}
+
+	http.SetCookie(w, &cookie)
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	refreshToken, err := r.Cookie("refresh_token")
+	if err != nil {
+		switch {
+		case errors.Is(err, http.ErrNoCookie):
+			h.logger.Error().Stack().Err(err).Msg("no refresh_token cookie found")
+			handlers.WriteErrorResponse(w, r, err, http.StatusUnauthorized)
+			return
+		default:
+			h.logger.Error().Stack().Err(err).Msg("unhandled error")
+			handlers.WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+			return
+		}
+	}
 
+	err = h.service.Logout(r.Context(), refreshToken.Value)
+	if err != nil {
+		h.logger.Error().Stack().Err(err).Msg("unhandled error")
+		handlers.WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
+	refreshToken, err := r.Cookie("refresh_token")
+	if err != nil {
+		switch {
+		case errors.Is(err, http.ErrNoCookie):
+			h.logger.Error().Stack().Err(err).Msg("no refresh_token cookie found")
+			handlers.WriteErrorResponse(w, r, err, http.StatusUnauthorized)
+			return
+		default:
+			h.logger.Error().Stack().Err(err).Msg("unhandled error")
+			handlers.WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+			return
+		}
+	}
 
+	response, err := h.service.Refresh(r.Context(), refreshToken.Value)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.TokenExpiredErr):
+			h.logger.Error().Stack().Err(err).Msg("refresh token expired")
+			handlers.WriteErrorResponse(w, r, err, http.StatusUnauthorized)
+			return
+		case errors.Is(err, services.InvalidTokenErr):
+			h.logger.Error().Stack().Err(err).Msg("invalid token")
+			handlers.WriteErrorResponse(w, r, err, http.StatusUnauthorized)
+			return
+		case errors.Is(err, storage.NotFoundTokenErr):
+			h.logger.Error().Stack().Err(err).Msg("token not found")
+			handlers.WriteErrorResponse(w, r, err, http.StatusUnauthorized)
+			return
+		default:
+			h.logger.Error().Stack().Err(err).Msg("unhandled error")
+			handlers.WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	cookie := http.Cookie{
+		Name:     "refresh_token",
+		Value:    response.RefreshToken,
+		MaxAge:   30 * 24 * 60 * 60,
+		HttpOnly: true,
+	}
+
+	http.SetCookie(w, &cookie)
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(response)
 }

@@ -28,7 +28,7 @@ func (s *TokenStorage) Find(ctx context.Context, refreshToken string) (*domain.T
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			return nil, NotFoundErr
+			return nil, NotFoundTokenErr
 		default:
 			return nil, err
 		}

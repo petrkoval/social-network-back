@@ -32,7 +32,7 @@ func (s *AuthService) Register(ctx context.Context, dto domain.CreateUserDTO) (*
 	)
 
 	_, err = s.users.Storage.FindByUsername(ctx, dto.Username)
-	if err != nil && !errors.Is(err, storage.NotFoundErr) {
+	if err != nil && !errors.Is(err, storage.NotFoundUserErr) {
 		return nil, err
 	} else if err == nil {
 		return nil, UserExistsErr

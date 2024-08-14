@@ -43,7 +43,7 @@ func (s *UserStorage) FindByID(ctx context.Context, userID string) (*domain.User
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			return nil, NotFoundErr
+			return nil, NotFoundUserErr
 		default:
 			return nil, err
 		}
@@ -63,7 +63,7 @@ func (s *UserStorage) FindByUsername(ctx context.Context, username string) (*dom
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			return nil, NotFoundErr
+			return nil, NotFoundUserErr
 		default:
 			return nil, err
 		}
@@ -83,7 +83,7 @@ func (s *UserStorage) UpdateUsername(ctx context.Context, userID string, usernam
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			return nil, NotFoundErr
+			return nil, NotFoundUserErr
 		default:
 			return nil, err
 		}
@@ -103,7 +103,7 @@ func (s *UserStorage) UpdatePassword(ctx context.Context, userID string, passwor
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			return nil, NotFoundErr
+			return nil, NotFoundUserErr
 		default:
 			return nil, err
 		}
