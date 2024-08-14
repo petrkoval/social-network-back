@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"github.com/petrkoval/social-network-back/internal/domain"
+	"github.com/rs/zerolog"
 )
 
 type UserStorage interface {
@@ -13,9 +14,10 @@ type UserStorage interface {
 }
 
 type UserService struct {
-	storage UserStorage
+	storage *UserStorage
+	logger  *zerolog.Logger
 }
 
-func NewUserService(s UserStorage) *UserService {
+func NewUserService(s *UserStorage) *UserService {
 	return &UserService{storage: s}
 }

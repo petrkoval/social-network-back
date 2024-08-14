@@ -8,11 +8,11 @@ type AuthResponse struct {
 }
 
 type AuthService struct {
-	tokenService TokenService
-	userService  UserService
+	tokenService *TokenService
+	userService  *UserService
 }
 
-func NewAuthService(tokenService TokenService, userService UserService) *AuthService {
+func NewAuthService(tokenService *TokenService, userService *UserService) *AuthService {
 	return &AuthService{
 		tokenService: tokenService,
 		userService:  userService,
