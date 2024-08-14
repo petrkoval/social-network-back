@@ -1,11 +1,11 @@
-package router
+package http
 
 import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/petrkoval/social-network-back/internal/config"
-	"github.com/petrkoval/social-network-back/internal/transport/http/router/middlewares"
+	middlewares2 "github.com/petrkoval/social-network-back/internal/transport/http/middlewares"
 	"net/http"
 	"time"
 )
@@ -27,8 +27,9 @@ func (r *Router) Start() error {
 }
 
 func (r *Router) InitMiddlewares() {
-	r.Use(middlewares.Logger)
-	r.Use(middlewares.CorsMiddleware)
-	r.Use(middleware.Timeout(time.Duration(r.cfg.WriteTimeout)))
+	r.Use(middlewares2.Logger)
+	r.Use(middlewares2.CorsMiddleware)
+
 	r.Use(middleware.Recoverer)
+	r.Use(middleware.Timeout(time.Duration(r.cfg.WriteTimeout)))
 }
