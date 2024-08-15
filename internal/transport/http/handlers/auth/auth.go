@@ -8,6 +8,7 @@ import (
 	"github.com/petrkoval/social-network-back/internal/domain"
 	"github.com/petrkoval/social-network-back/internal/services"
 	"github.com/petrkoval/social-network-back/internal/storage"
+	http2 "github.com/petrkoval/social-network-back/internal/transport/http"
 	"github.com/petrkoval/social-network-back/internal/transport/http/handlers"
 	"github.com/rs/zerolog"
 	"net/http"
@@ -26,7 +27,7 @@ type Handler struct {
 	router  *chi.Mux
 }
 
-func NewAuthHandler(s Service, l *zerolog.Logger) *Handler {
+func NewAuthHandler(s Service, l *zerolog.Logger) handlers.Handler {
 	r := chi.NewRouter()
 
 	return &Handler{
@@ -36,7 +37,7 @@ func NewAuthHandler(s Service, l *zerolog.Logger) *Handler {
 	}
 }
 
-func (h *Handler) MountOn(router *chi.Mux) {
+func (h *Handler) MountOn(router *http2.Router) {
 	h.router.Post("/register", h.Register)
 	h.router.Post("/login", h.Login)
 	h.router.Post("/logout", h.Logout)
