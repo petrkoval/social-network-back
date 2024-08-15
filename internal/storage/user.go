@@ -21,10 +21,17 @@ func (s *UserStorage) Create(ctx context.Context, dto domain.CreateUserDTO) (*do
 	var (
 		query  = `INSERT INTO users (username, password) VALUES ($1, $2) RETURNING *;`
 		entity = &domain.User{}
+		rows   pgx.Rows
 		err    error
 	)
 
-	err = pgxscan.Get(ctx, s.client, entity, query, dto.Username, dto.Password)
+	rows, err = s.client.Query(ctx, query, dto.Username, dto.Password)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	err = pgxscan.ScanOne(&entity, rows)
 	if err != nil {
 		return nil, InsertErr
 	}
@@ -76,10 +83,17 @@ func (s *UserStorage) UpdateUsername(ctx context.Context, userID string, usernam
 	var (
 		query  = `UPDATE users SET username = $1 WHERE user_id = $2 RETURNING *;`
 		entity = &domain.User{}
+		rows   pgx.Rows
 		err    error
 	)
 
-	err = pgxscan.Get(ctx, s.client, entity, query, username, userID)
+	rows, err = s.client.Query(ctx, query, username, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	err = pgxscan.ScanOne(&entity, rows)
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
@@ -96,10 +110,17 @@ func (s *UserStorage) UpdatePassword(ctx context.Context, userID string, passwor
 	var (
 		query  = `UPDATE users SET password = $1 WHERE user_id = $2 RETURNING *;`
 		entity = &domain.User{}
+		rows   pgx.Rows
 		err    error
 	)
 
-	err = pgxscan.Get(ctx, s.client, entity, query, password, userID)
+	rows, err = s.client.Query(ctx, query, password, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	err = pgxscan.ScanOne(&entity, rows)
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):

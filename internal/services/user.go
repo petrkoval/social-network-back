@@ -16,12 +16,12 @@ type UserStorage interface {
 
 type UserService struct {
 	Storage UserStorage
-	logger  *zerolog.Logger
+	Logger  *zerolog.Logger
 }
 
 func NewUserService(s UserStorage, l *zerolog.Logger) *UserService {
 	return &UserService{
 		Storage: s,
-		logger:  l,
+		Logger:  l,
 	}
 }
