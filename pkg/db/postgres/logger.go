@@ -23,6 +23,6 @@ func (z *zerologPgxTracer) TraceQueryStart(ctx context.Context, _ *pgx.Conn, dat
 func (z *zerologPgxTracer) TraceQueryEnd(_ context.Context, _ *pgx.Conn, data pgx.TraceQueryEndData) {
 	z.logger.Debug().
 		Str("command tag", data.CommandTag.String()).
-		Str("err", fmt.Sprintf("%v", data.Err.Error())).
+		Str("err", fmt.Sprintf("%v", data.Err)).
 		Msg("tracing pgx query end")
 }

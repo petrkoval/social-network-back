@@ -8,5 +8,6 @@ var (
 	TokenExpiredErr            = errors.New("token is expired")
 	InvalidTokenErr            = errors.New("invalid token")
 
-	UserExistsErr = errors.New("user already exists")
+	UserExistsErr    = errors.New("user already exists")
+	WrongPasswordErr = errors.New("wrong password")
 )

@@ -57,6 +57,10 @@ func (s *AuthService) Login(ctx context.Context, dto domain.CreateUserDTO) (*Aut
 		return nil, err
 	}
 
+	if !(dto.Password == entity.Password) {
+		return nil, WrongPasswordErr
+	}
+
 	return s.generateAndSaveTokens(ctx, entity)
 }
 

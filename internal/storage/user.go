@@ -2,11 +2,11 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/petrkoval/social-network-back/internal/domain"
+	"github.com/pkg/errors"
 )
 
 type UserStorage struct {
@@ -27,13 +27,13 @@ func (s *UserStorage) Create(ctx context.Context, dto domain.CreateUserDTO) (*do
 
 	rows, err = s.client.Query(ctx, query, dto.Username, dto.Password)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "UserStorage Create")
 	}
 	defer rows.Close()
 
 	err = pgxscan.ScanOne(&entity, rows)
 	if err != nil {
-		return nil, InsertErr
+		return nil, errors.Wrap(err, "UserStorage Create")
 	}
 
 	return entity, nil
@@ -70,9 +70,9 @@ func (s *UserStorage) FindByUsername(ctx context.Context, username string) (*dom
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			return nil, NotFoundUserErr
+			return nil, errors.Wrap(NotFoundUserErr, "UserStorage FindByUsername")
 		default:
-			return nil, err
+			return nil, errors.Wrap(err, "UserStorage FindByUsername")
 		}
 	}
 

@@ -31,5 +31,5 @@ func (r *Router) InitMiddlewares() {
 	r.Use(middlewares2.CorsMiddleware)
 
 	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(time.Duration(r.cfg.WriteTimeout)))
+	r.Use(middleware.Timeout(time.Duration(r.cfg.WriteTimeout) * time.Second))
 }

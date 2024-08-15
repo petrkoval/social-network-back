@@ -60,10 +60,6 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 			h.logger.Error().Stack().Err(err).Msg("User already exists")
 			handlers.WriteErrorResponse(w, r, err, http.StatusConflict)
 			return
-		case errors.Is(err, storage.InsertErr):
-			h.logger.Error().Stack().Err(err).Msg("Insert error")
-			handlers.WriteErrorResponse(w, r, err, http.StatusInternalServerError)
-			return
 		default:
 			h.logger.Error().Stack().Err(err).Msg("unhandled error")
 			handlers.WriteErrorResponse(w, r, err, http.StatusInternalServerError)
@@ -96,6 +92,9 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, storage.NotFoundUserErr):
 			h.logger.Error().Stack().Err(err).Msg("User not found")
+			handlers.WriteErrorResponse(w, r, err, http.StatusNotFound)
+			return
+		case errors.Is(err, services.WrongPasswordErr):
 			handlers.WriteErrorResponse(w, r, err, http.StatusNotFound)
 			return
 		default:
@@ -139,6 +138,13 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cookie := http.Cookie{
+		Name:     "refresh_token",
+		MaxAge:   -1,
+		HttpOnly: true,
+	}
+
+	http.SetCookie(w, &cookie)
 	w.WriteHeader(http.StatusNoContent)
 }
 

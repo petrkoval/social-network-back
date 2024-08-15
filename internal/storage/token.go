@@ -43,7 +43,7 @@ func (s *TokenStorage) Save(ctx context.Context, token domain.Token) error {
 	_, err = s.Find(ctx, token.RefreshToken)
 	if err != nil {
 		switch {
-		case errors.Is(err, pgx.ErrNoRows):
+		case errors.Is(err, NotFoundTokenErr):
 			err = s.create(ctx, token)
 			if err != nil {
 				return err
