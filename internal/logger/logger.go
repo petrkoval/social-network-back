@@ -9,14 +9,14 @@ import (
 )
 
 func NewLogger() *zerolog.Logger {
-	output := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.DateTime}
+	output := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.DateTime, NoColor: false}
 
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 
-	output.FormatLevel = func(i interface{}) string {
-		return strings.ToUpper(fmt.Sprintf("| %-6s|", i))
-	}
+	//output.FormatLevel = func(i interface{}) string {
+	//	return strings.ToUpper(fmt.Sprintf("| %-6s|", i))
+	//}
 	output.FormatMessage = func(i interface{}) string {
 		return fmt.Sprintf("'%s'", i)
 	}
