@@ -14,6 +14,13 @@ import (
 	"net/http"
 )
 
+const (
+	registerUrl = "/register"
+	loginUrl    = "/login"
+	logoutUrl   = "/logout"
+	refreshUrl  = "/refresh"
+)
+
 type Service interface {
 	Register(ctx context.Context, dto domain.CreateUserDTO) (*services.AuthResponse, error)
 	Login(ctx context.Context, dto domain.CreateUserDTO) (*services.AuthResponse, error)
@@ -38,10 +45,10 @@ func NewAuthHandler(s Service, l *zerolog.Logger) handlers.Handler {
 }
 
 func (h *Handler) MountOn(router *http2.Router) {
-	h.router.Post("/register", h.Register)
-	h.router.Post("/login", h.Login)
-	h.router.Post("/logout", h.Logout)
-	h.router.Get("/refresh", h.Refresh)
+	h.router.Post(registerUrl, h.Register)
+	h.router.Post(loginUrl, h.Login)
+	h.router.Post(logoutUrl, h.Logout)
+	h.router.Get(refreshUrl, h.Refresh)
 
 	router.Mount("/", h.router)
 }

@@ -31,7 +31,7 @@ func (s *UserStorage) Create(ctx context.Context, dto domain.CreateUserDTO) (*do
 	}
 	defer rows.Close()
 
-	err = pgxscan.ScanOne(&entity, rows)
+	err = pgxscan.ScanOne(entity, rows)
 	if err != nil {
 		return nil, errors.Wrap(err, "UserStorage.Create")
 	}
