@@ -17,7 +17,7 @@ func NewTokenStorage(pool *pgxpool.Pool) *TokenStorage {
 	return &TokenStorage{client: pool}
 }
 
-func (s *TokenStorage) Find(ctx context.Context, refreshToken string) (*domain.Token, error) {
+func (s *TokenStorage) FindByToken(ctx context.Context, refreshToken string) (*domain.Token, error) {
 	var (
 		query  = `SELECT * FROM tokens WHERE refresh_token = $1;`
 		entity = &domain.Token{}
@@ -28,9 +28,29 @@ func (s *TokenStorage) Find(ctx context.Context, refreshToken string) (*domain.T
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			return nil, errors.Wrap(NotFoundTokenErr, "TokenStorage.Find")
+			return nil, errors.Wrap(NotFoundTokenErr, "TokenStorage.FindByToken")
 		default:
-			return nil, errors.Wrap(err, "TokenStorage.Find")
+			return nil, errors.Wrap(err, "TokenStorage.FindByToken")
+		}
+	}
+
+	return entity, nil
+}
+
+func (s *TokenStorage) FindByUserID(ctx context.Context, userID string) (*domain.Token, error) {
+	var (
+		query  = `SELECT * FROM tokens WHERE user_id = $1;`
+		entity = &domain.Token{}
+		err    error
+	)
+
+	err = pgxscan.Get(ctx, s.client, entity, query, userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			return nil, errors.Wrap(NotFoundTokenErr, "TokenStorage.FindByToken")
+		default:
+			return nil, errors.Wrap(err, "TokenStorage.FindByToken")
 		}
 	}
 
@@ -40,7 +60,7 @@ func (s *TokenStorage) Find(ctx context.Context, refreshToken string) (*domain.T
 func (s *TokenStorage) Save(ctx context.Context, token domain.Token) error {
 	var err error
 
-	_, err = s.Find(ctx, token.RefreshToken)
+	_, err = s.FindByUserID(ctx, token.UserID)
 	if err != nil {
 		switch {
 		case errors.Is(err, NotFoundTokenErr):
@@ -69,7 +89,7 @@ func (s *TokenStorage) Delete(ctx context.Context, refreshToken string) error {
 
 	_, err = s.client.Exec(ctx, query, refreshToken)
 	if err != nil {
-		return errors.Wrap(err, "TokenStorage.Save")
+		return errors.Wrap(err, "TokenStorage.Delete")
 	}
 
 	return nil
@@ -83,7 +103,7 @@ func (s *TokenStorage) update(ctx context.Context, token domain.Token) error {
 
 	_, err = s.client.Exec(ctx, query, token.RefreshToken, token.UserID)
 	if err != nil {
-		return errors.Wrap(err, "TokenStorage.Save")
+		return errors.Wrap(err, "TokenStorage.update")
 	}
 
 	return nil
@@ -97,7 +117,7 @@ func (s *TokenStorage) create(ctx context.Context, token domain.Token) error {
 
 	_, err = s.client.Exec(ctx, query, token.UserID, token.RefreshToken)
 	if err != nil {
-		return errors.Wrap(err, "TokenStorage.Save")
+		return errors.Wrap(err, "TokenStorage.create")
 	}
 
 	return nil

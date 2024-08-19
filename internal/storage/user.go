@@ -17,10 +17,10 @@ func NewUserStorage(c *pgxpool.Pool) *UserStorage {
 	return &UserStorage{client: c}
 }
 
-func (s *UserStorage) Create(ctx context.Context, dto domain.CreateUserDTO) (*domain.User, error) {
+func (s *UserStorage) Create(ctx context.Context, dto domain.CreateUserDTO) (*domain.AuthUser, error) {
 	var (
-		query  = `INSERT INTO users (username, password) VALUES ($1, $2) RETURNING *;`
-		entity = &domain.User{}
+		query  = `INSERT INTO users (username, password) VALUES ($1, $2) RETURNING user_id, username;`
+		entity = &domain.AuthUser{}
 		rows   pgx.Rows
 		err    error
 	)
@@ -41,7 +41,14 @@ func (s *UserStorage) Create(ctx context.Context, dto domain.CreateUserDTO) (*do
 
 func (s *UserStorage) FindByID(ctx context.Context, userID string) (*domain.User, error) {
 	var (
-		query  = `SELECT * FROM users WHERE user_id = $1;`
+		query = `
+			SELECT user_id,
+				   username,
+				   password,
+				   created_at,
+				   coalesce(account_description, '') as account_description
+			FROM users
+			WHERE user_id = $1;`
 		entity = &domain.User{}
 		err    error
 	)
@@ -61,7 +68,14 @@ func (s *UserStorage) FindByID(ctx context.Context, userID string) (*domain.User
 
 func (s *UserStorage) FindByUsername(ctx context.Context, username string) (*domain.User, error) {
 	var (
-		query  = `SELECT * FROM users WHERE username = $1;`
+		query = `
+			SELECT user_id,
+				   username,
+				   password,
+				   created_at,
+				   coalesce(account_description, '') as account_description
+			FROM users
+			WHERE username = $1;`
 		entity = &domain.User{}
 		err    error
 	)

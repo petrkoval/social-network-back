@@ -11,7 +11,8 @@ import (
 )
 
 type TokenStorage interface {
-	Find(ctx context.Context, refreshToken string) (*domain.Token, error)
+	FindByToken(ctx context.Context, refreshToken string) (*domain.Token, error)
+	FindByUserID(ctx context.Context, userID string) (*domain.Token, error)
 	Save(ctx context.Context, token domain.Token) error
 	Delete(ctx context.Context, refreshToken string) error
 }
@@ -30,7 +31,7 @@ func NewTokenService(s TokenStorage, l *zerolog.Logger, cfg *config.TokensConfig
 	}
 }
 
-func (s *TokenService) GenerateTokens(user domain.User) (accessToken, refreshToken string, err error) {
+func (s *TokenService) GenerateTokens(user domain.AuthUser) (accessToken, refreshToken string, err error) {
 	var (
 		accessTokenClaims    domain.TokenClaims
 		refreshTokenClaims   domain.TokenClaims
@@ -44,7 +45,7 @@ func (s *TokenService) GenerateTokens(user domain.User) (accessToken, refreshTok
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "token service",
 			Subject:   user.ID,
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second * 10)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 3)),
 		},
 	}
 
@@ -53,7 +54,7 @@ func (s *TokenService) GenerateTokens(user domain.User) (accessToken, refreshTok
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "token service",
 			Subject:   user.ID,
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24 * 30)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second * 15)),
 		},
 	}
 
@@ -78,7 +79,7 @@ func (s *TokenService) GenerateTokens(user domain.User) (accessToken, refreshTok
 	return accessToken, refreshToken, nil
 }
 
-func (s *TokenService) VerifyAccessToken(accessToken string) (*domain.User, error) {
+func (s *TokenService) VerifyAccessToken(accessToken string) (*domain.AuthUser, error) {
 	var (
 		token *jwt.Token
 		err   error
@@ -95,7 +96,7 @@ func (s *TokenService) VerifyAccessToken(accessToken string) (*domain.User, erro
 			return nil, errors.Wrap(TokenExpiredErr, "TokenService.VerifyAccessToken")
 		}
 
-		entity := &domain.User{
+		entity := &domain.AuthUser{
 			ID:       claims.Subject,
 			Username: claims.Username,
 		}
@@ -111,7 +112,7 @@ func (s *TokenService) VerifyAccessToken(accessToken string) (*domain.User, erro
 	return nil, errors.Wrap(InvalidTokenErr, "TokenService.VerifyAccessToken")
 }
 
-func (s *TokenService) VerifyRefreshToken(refreshToken string) (*domain.User, error) {
+func (s *TokenService) VerifyRefreshToken(refreshToken string) (*domain.AuthUser, error) {
 	var (
 		token *jwt.Token
 		err   error
@@ -120,7 +121,12 @@ func (s *TokenService) VerifyRefreshToken(refreshToken string) (*domain.User, er
 
 	token, err = jwt.ParseWithClaims(refreshToken, &domain.TokenClaims{}, s.validateRefreshSigningMethod)
 	if err != nil {
-		return nil, errors.Wrap(err, "TokenService.VerifyRefreshToken")
+		switch {
+		case errors.Is(err, jwt.ErrTokenExpired):
+			return nil, errors.Wrap(TokenExpiredErr, "TokenService.VerifyRefreshToken")
+		default:
+			return nil, errors.Wrap(err, "TokenService.VerifyRefreshToken")
+		}
 	}
 
 	if claims, ok := token.Claims.(*domain.TokenClaims); ok && token.Valid {
@@ -128,7 +134,7 @@ func (s *TokenService) VerifyRefreshToken(refreshToken string) (*domain.User, er
 			return nil, errors.Wrap(TokenExpiredErr, "TokenService.VerifyRefreshToken")
 		}
 
-		entity := &domain.User{
+		entity := &domain.AuthUser{
 			ID:       claims.Subject,
 			Username: claims.Username,
 		}

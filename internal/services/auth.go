@@ -8,9 +8,9 @@ import (
 )
 
 type AuthResponse struct {
-	AccessToken  string       `json:"access_token"`
-	RefreshToken string       `json:"-"`
-	User         *domain.User `json:"user"`
+	AccessToken  string           `json:"access_token"`
+	RefreshToken string           `json:"-"`
+	User         *domain.AuthUser `json:"user"`
 }
 
 type AuthService struct {
@@ -28,7 +28,7 @@ func NewAuthService(tokenService *TokenService, userService *UserService) *AuthS
 func (s *AuthService) Register(ctx context.Context, dto domain.CreateUserDTO) (*AuthResponse, error) {
 	var (
 		err    error
-		entity *domain.User
+		entity *domain.AuthUser
 	)
 
 	_, err = s.users.Storage.FindByUsername(ctx, dto.Username)
@@ -48,18 +48,22 @@ func (s *AuthService) Register(ctx context.Context, dto domain.CreateUserDTO) (*
 
 func (s *AuthService) Login(ctx context.Context, dto domain.CreateUserDTO) (*AuthResponse, error) {
 	var (
-		err    error
-		entity *domain.User
+		err        error
+		userFromDB *domain.User
+		entity     = &domain.AuthUser{}
 	)
 
-	entity, err = s.users.Storage.FindByUsername(ctx, dto.Username)
+	userFromDB, err = s.users.Storage.FindByUsername(ctx, dto.Username)
 	if err != nil {
 		return nil, errors.Wrap(err, "AuthService.Login")
 	}
 
-	if !(dto.Password == entity.Password) {
+	if !(dto.Password == userFromDB.Password) {
 		return nil, errors.Wrap(WrongPasswordErr, "AuthService.Login")
 	}
+
+	entity.Username = userFromDB.Username
+	entity.ID = userFromDB.ID
 
 	return s.generateAndSaveTokens(ctx, entity)
 }
@@ -71,7 +75,7 @@ func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*AuthResponse, error) {
 	var (
 		err    error
-		entity *domain.User
+		entity *domain.AuthUser
 	)
 
 	entity, err = s.tokens.VerifyRefreshToken(refreshToken)
@@ -79,7 +83,7 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*AuthRe
 		return nil, errors.Wrap(err, "AuthService.Refresh")
 	}
 
-	_, err = s.tokens.Storage.Find(ctx, refreshToken)
+	_, err = s.tokens.Storage.FindByToken(ctx, refreshToken)
 	if err != nil {
 		return nil, errors.Wrap(err, "AuthService.Refresh")
 	}
@@ -87,7 +91,7 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*AuthRe
 	return s.generateAndSaveTokens(ctx, entity)
 }
 
-func (s *AuthService) generateAndSaveTokens(ctx context.Context, user *domain.User) (*AuthResponse, error) {
+func (s *AuthService) generateAndSaveTokens(ctx context.Context, user *domain.AuthUser) (*AuthResponse, error) {
 	accessToken, refreshToken, err := s.tokens.GenerateTokens(*user)
 	if err != nil {
 		return nil, errors.Wrap(err, "AuthService.generateAndSaveTokens")

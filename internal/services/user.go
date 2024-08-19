@@ -7,7 +7,7 @@ import (
 )
 
 type UserStorage interface {
-	Create(ctx context.Context, dto domain.CreateUserDTO) (*domain.User, error)
+	Create(ctx context.Context, dto domain.CreateUserDTO) (*domain.AuthUser, error)
 	FindByID(ctx context.Context, userID string) (*domain.User, error)
 	FindByUsername(ctx context.Context, username string) (*domain.User, error)
 	UpdateUsername(ctx context.Context, userID string, username string) (*domain.User, error)
