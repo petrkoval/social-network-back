@@ -4,12 +4,14 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/petrkoval/social-network-back/internal/domain"
 	http2 "github.com/petrkoval/social-network-back/internal/transport/http"
+	"github.com/petrkoval/social-network-back/internal/transport/http/middlewares"
 	"github.com/rs/zerolog"
 	"net/http"
 )
 
 const (
-	channelUrl = "/channels"
+	path       = "/channels"
+	channelUrl = "/{id}"
 )
 
 type ChannelService interface {
@@ -38,8 +40,19 @@ func NewChannelHandler(s ChannelService, l *zerolog.Logger) Handler {
 }
 
 func (h *channelHandler) MountOn(router *http2.Router) {
+	h.router.Use(middlewares.Auth)
 
-	router.Mount(channelUrl, h.router)
+	h.router.Get("/", h.FindAll)
+	h.router.Post("/", h.Create)
+
+	h.router.Route(channelUrl, func(r chi.Router) {
+		r.Get("/", h.FindByUserID)
+		r.Get("/", h.FindByID)
+		r.Put("/", h.Update)
+		r.Delete("/", h.Delete)
+	})
+
+	router.Mount(path, h.router)
 }
 
 func (h *channelHandler) FindAll(w http.ResponseWriter, r *http.Request) {
