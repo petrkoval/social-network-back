@@ -1,8 +1,10 @@
 CREATE TABLE IF NOT EXISTS users
 (
-    user_id  uuid PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
-    username varchar(16)      NOT NULL,
-    password varchar(32)      NOT NULL
+    user_id             uuid PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4(),
+    username            varchar(16)      NOT NULL,
+    password            varchar(32)      NOT NULL,
+    created_at          timestamp        NOT NULL DEFAULT now(),
+    account_description varchar(256)
 );
 
 CREATE TABLE IF NOT EXISTS tokens
@@ -28,4 +30,10 @@ CREATE TABLE IF NOT EXISTS posts
     created_at timestamp        NOT NULL             DEFAULT now(),
     content    text                                  DEFAULT NULL,
     images     text[]                                DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS likes
+(
+    post_id uuid PRIMARY KEY NOT NULL REFERENCES posts (post_id),
+    user_id uuid             NOT NULL REFERENCES users (user_id)
 );
