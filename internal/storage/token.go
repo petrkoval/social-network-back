@@ -2,11 +2,11 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/petrkoval/social-network-back/internal/domain"
+	"github.com/pkg/errors"
 )
 
 type TokenStorage struct {
@@ -28,9 +28,9 @@ func (s *TokenStorage) Find(ctx context.Context, refreshToken string) (*domain.T
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			return nil, NotFoundTokenErr
+			return nil, errors.Wrap(NotFoundTokenErr, "TokenStorage.Find")
 		default:
-			return nil, err
+			return nil, errors.Wrap(err, "TokenStorage.Find")
 		}
 	}
 
@@ -46,16 +46,16 @@ func (s *TokenStorage) Save(ctx context.Context, token domain.Token) error {
 		case errors.Is(err, NotFoundTokenErr):
 			err = s.create(ctx, token)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "TokenStorage.Save")
 			}
 		default:
-			return err
+			return errors.Wrap(err, "TokenStorage.Save")
 		}
 	}
 
 	err = s.update(ctx, token)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "TokenStorage.Save")
 	}
 
 	return nil
@@ -69,7 +69,7 @@ func (s *TokenStorage) Delete(ctx context.Context, refreshToken string) error {
 
 	_, err = s.client.Exec(ctx, query, refreshToken)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "TokenStorage.Save")
 	}
 
 	return nil
@@ -83,7 +83,7 @@ func (s *TokenStorage) update(ctx context.Context, token domain.Token) error {
 
 	_, err = s.client.Exec(ctx, query, token.RefreshToken, token.UserID)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "TokenStorage.Save")
 	}
 
 	return nil
@@ -97,7 +97,7 @@ func (s *TokenStorage) create(ctx context.Context, token domain.Token) error {
 
 	_, err = s.client.Exec(ctx, query, token.UserID, token.RefreshToken)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "TokenStorage.Save")
 	}
 
 	return nil

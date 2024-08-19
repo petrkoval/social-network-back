@@ -5,6 +5,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/petrkoval/social-network-back/internal/config"
 	"github.com/petrkoval/social-network-back/internal/domain"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"time"
 )
@@ -61,12 +62,12 @@ func (s *TokenService) GenerateTokens(user domain.User) (accessToken, refreshTok
 
 	accessToken, err = unsignedAccessToken.SignedString([]byte(s.cfg.AccessSecret))
 	if err != nil {
-		return "", "", JwtSigningErr
+		return "", "", errors.Wrap(JwtSigningErr, "TokenService.GenerateTokens")
 	}
 
 	refreshToken, err = unsignedRefreshToken.SignedString([]byte(s.cfg.RefreshSecret))
 	if err != nil {
-		return "", "", JwtSigningErr
+		return "", "", errors.Wrap(JwtSigningErr, "TokenService.GenerateTokens")
 	}
 
 	s.logger.Debug().
@@ -86,12 +87,12 @@ func (s *TokenService) VerifyAccessToken(accessToken string) (*domain.User, erro
 
 	token, err = jwt.ParseWithClaims(accessToken, &domain.TokenClaims{}, s.validateAccessSigningMethod)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "TokenService.VerifyAccessToken")
 	}
 
 	if claims, ok := token.Claims.(*domain.TokenClaims); ok && token.Valid {
 		if claims.ExpiresAt.Before(time.Now()) {
-			return nil, TokenExpiredErr
+			return nil, errors.Wrap(TokenExpiredErr, "TokenService.VerifyAccessToken")
 		}
 
 		entity := &domain.User{
@@ -107,7 +108,7 @@ func (s *TokenService) VerifyAccessToken(accessToken string) (*domain.User, erro
 		return entity, nil
 	}
 
-	return nil, InvalidTokenErr
+	return nil, errors.Wrap(InvalidTokenErr, "TokenService.VerifyAccessToken")
 }
 
 func (s *TokenService) VerifyRefreshToken(refreshToken string) (*domain.User, error) {
@@ -119,12 +120,12 @@ func (s *TokenService) VerifyRefreshToken(refreshToken string) (*domain.User, er
 
 	token, err = jwt.ParseWithClaims(refreshToken, &domain.TokenClaims{}, s.validateRefreshSigningMethod)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "TokenService.VerifyRefreshToken")
 	}
 
 	if claims, ok := token.Claims.(*domain.TokenClaims); ok && token.Valid {
 		if claims.ExpiresAt.Before(time.Now()) {
-			return nil, TokenExpiredErr
+			return nil, errors.Wrap(TokenExpiredErr, "TokenService.VerifyRefreshToken")
 		}
 
 		entity := &domain.User{
@@ -140,12 +141,12 @@ func (s *TokenService) VerifyRefreshToken(refreshToken string) (*domain.User, er
 		return entity, nil
 	}
 
-	return nil, InvalidTokenErr
+	return nil, errors.Wrap(InvalidTokenErr, "TokenService.VerifyRefreshToken")
 }
 
 func (s *TokenService) validateAccessSigningMethod(token *jwt.Token) (interface{}, error) {
 	if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-		return nil, UnexpectedSigningMethodErr
+		return nil, errors.Wrap(UnexpectedSigningMethodErr, "TokenService.validateAccessSigningMethod")
 	}
 
 	return []byte(s.cfg.AccessSecret), nil
@@ -153,7 +154,7 @@ func (s *TokenService) validateAccessSigningMethod(token *jwt.Token) (interface{
 
 func (s *TokenService) validateRefreshSigningMethod(token *jwt.Token) (interface{}, error) {
 	if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-		return nil, UnexpectedSigningMethodErr
+		return nil, errors.Wrap(UnexpectedSigningMethodErr, "TokenService.validateRefreshSigningMethod")
 	}
 
 	return []byte(s.cfg.RefreshSecret), nil

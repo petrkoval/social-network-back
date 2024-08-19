@@ -2,9 +2,9 @@ package services
 
 import (
 	"context"
-	"errors"
 	"github.com/petrkoval/social-network-back/internal/domain"
 	"github.com/petrkoval/social-network-back/internal/storage"
+	"github.com/pkg/errors"
 )
 
 type AuthResponse struct {
@@ -33,14 +33,14 @@ func (s *AuthService) Register(ctx context.Context, dto domain.CreateUserDTO) (*
 
 	_, err = s.users.Storage.FindByUsername(ctx, dto.Username)
 	if err != nil && !errors.Is(err, storage.NotFoundUserErr) {
-		return nil, err
+		return nil, errors.Wrap(err, "AuthService.Register")
 	} else if err == nil {
-		return nil, UserExistsErr
+		return nil, errors.Wrap(UserExistsErr, "AuthService.Register")
 	}
 
 	entity, err = s.users.Storage.Create(ctx, dto)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "AuthService.Register")
 	}
 
 	return s.generateAndSaveTokens(ctx, entity)
@@ -54,11 +54,11 @@ func (s *AuthService) Login(ctx context.Context, dto domain.CreateUserDTO) (*Aut
 
 	entity, err = s.users.Storage.FindByUsername(ctx, dto.Username)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "AuthService.Login")
 	}
 
 	if !(dto.Password == entity.Password) {
-		return nil, WrongPasswordErr
+		return nil, errors.Wrap(WrongPasswordErr, "AuthService.Login")
 	}
 
 	return s.generateAndSaveTokens(ctx, entity)
@@ -76,12 +76,12 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*AuthRe
 
 	entity, err = s.tokens.VerifyRefreshToken(refreshToken)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "AuthService.Refresh")
 	}
 
 	_, err = s.tokens.Storage.Find(ctx, refreshToken)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "AuthService.Refresh")
 	}
 
 	return s.generateAndSaveTokens(ctx, entity)
@@ -90,7 +90,7 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*AuthRe
 func (s *AuthService) generateAndSaveTokens(ctx context.Context, user *domain.User) (*AuthResponse, error) {
 	accessToken, refreshToken, err := s.tokens.GenerateTokens(*user)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "AuthService.generateAndSaveTokens")
 	}
 
 	err = s.tokens.Storage.Save(ctx, domain.Token{
@@ -98,7 +98,7 @@ func (s *AuthService) generateAndSaveTokens(ctx context.Context, user *domain.Us
 		RefreshToken: refreshToken,
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "AuthService.generateAndSaveTokens")
 	}
 
 	return &AuthResponse{

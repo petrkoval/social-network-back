@@ -27,13 +27,13 @@ func (s *UserStorage) Create(ctx context.Context, dto domain.CreateUserDTO) (*do
 
 	rows, err = s.client.Query(ctx, query, dto.Username, dto.Password)
 	if err != nil {
-		return nil, errors.Wrap(err, "UserStorage Create")
+		return nil, errors.Wrap(err, "UserStorage.Create")
 	}
 	defer rows.Close()
 
 	err = pgxscan.ScanOne(&entity, rows)
 	if err != nil {
-		return nil, errors.Wrap(err, "UserStorage Create")
+		return nil, errors.Wrap(err, "UserStorage.Create")
 	}
 
 	return entity, nil
@@ -50,9 +50,9 @@ func (s *UserStorage) FindByID(ctx context.Context, userID string) (*domain.User
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			return nil, NotFoundUserErr
+			return nil, errors.Wrap(NotFoundUserErr, "UserStorage.FindByID")
 		default:
-			return nil, err
+			return nil, errors.Wrap(err, "UserStorage.FindByID")
 		}
 	}
 
@@ -70,9 +70,9 @@ func (s *UserStorage) FindByUsername(ctx context.Context, username string) (*dom
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			return nil, errors.Wrap(NotFoundUserErr, "UserStorage FindByUsername")
+			return nil, errors.Wrap(NotFoundUserErr, "UserStorage.FindByUsername")
 		default:
-			return nil, errors.Wrap(err, "UserStorage FindByUsername")
+			return nil, errors.Wrap(err, "UserStorage.FindByUsername")
 		}
 	}
 
@@ -89,7 +89,7 @@ func (s *UserStorage) UpdateUsername(ctx context.Context, userID string, usernam
 
 	rows, err = s.client.Query(ctx, query, username, userID)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "UserStorage.UpdateUsername")
 	}
 	defer rows.Close()
 
@@ -97,9 +97,9 @@ func (s *UserStorage) UpdateUsername(ctx context.Context, userID string, usernam
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			return nil, NotFoundUserErr
+			return nil, errors.Wrap(NotFoundUserErr, "UserStorage.UpdateUsername")
 		default:
-			return nil, err
+			return nil, errors.Wrap(err, "UserStorage.UpdateUsername")
 		}
 	}
 
@@ -116,7 +116,7 @@ func (s *UserStorage) UpdatePassword(ctx context.Context, userID string, passwor
 
 	rows, err = s.client.Query(ctx, query, password, userID)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "UserStorage.UpdatePassword")
 	}
 	defer rows.Close()
 
@@ -124,9 +124,9 @@ func (s *UserStorage) UpdatePassword(ctx context.Context, userID string, passwor
 	if err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
-			return nil, NotFoundUserErr
+			return nil, errors.Wrap(NotFoundUserErr, "UserStorage.UpdatePassword")
 		default:
-			return nil, err
+			return nil, errors.Wrap(err, "UserStorage.UpdatePassword")
 		}
 	}
 
