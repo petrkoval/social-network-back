@@ -1,4 +1,4 @@
-package auth
+package handlers
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"github.com/petrkoval/social-network-back/internal/services"
 	"github.com/petrkoval/social-network-back/internal/storage"
 	http2 "github.com/petrkoval/social-network-back/internal/transport/http"
-	"github.com/petrkoval/social-network-back/internal/transport/http/handlers"
 	"github.com/rs/zerolog"
 	"net/http"
 )
@@ -21,30 +20,30 @@ const (
 	refreshUrl  = "/refresh"
 )
 
-type Service interface {
+type AuthService interface {
 	Register(ctx context.Context, dto domain.CreateUserDTO) (*services.AuthResponse, error)
 	Login(ctx context.Context, dto domain.CreateUserDTO) (*services.AuthResponse, error)
 	Logout(ctx context.Context, refreshToken string) error
 	Refresh(ctx context.Context, refreshToken string) (*services.AuthResponse, error)
 }
 
-type Handler struct {
-	service Service
+type authHandler struct {
+	service AuthService
 	logger  *zerolog.Logger
 	router  *chi.Mux
 }
 
-func NewAuthHandler(s Service, l *zerolog.Logger) handlers.Handler {
+func NewAuthHandler(s AuthService, l *zerolog.Logger) Handler {
 	r := chi.NewRouter()
 
-	return &Handler{
+	return &authHandler{
 		service: s,
 		logger:  l,
 		router:  r,
 	}
 }
 
-func (h *Handler) MountOn(router *http2.Router) {
+func (h *authHandler) MountOn(router *http2.Router) {
 	h.router.Post(registerUrl, h.Register)
 	h.router.Post(loginUrl, h.Login)
 	h.router.Post(logoutUrl, h.Logout)
@@ -53,7 +52,7 @@ func (h *Handler) MountOn(router *http2.Router) {
 	router.Mount("/", h.router)
 }
 
-func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
+func (h *authHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var (
 		entity domain.CreateUserDTO
 	)
@@ -65,11 +64,11 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, services.UserExistsErr):
 			h.logger.Error().Stack().Err(err).Msg("User already exists")
-			handlers.WriteErrorResponse(w, r, err, http.StatusConflict)
+			WriteErrorResponse(w, r, err, http.StatusConflict)
 			return
 		default:
 			h.logger.Error().Stack().Err(err).Msg("unhandled error")
-			handlers.WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+			WriteErrorResponse(w, r, err, http.StatusInternalServerError)
 			return
 		}
 	}
@@ -87,7 +86,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(response)
 }
 
-func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+func (h *authHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var (
 		entity domain.CreateUserDTO
 	)
@@ -99,14 +98,14 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, storage.NotFoundUserErr):
 			h.logger.Error().Stack().Err(err).Msg("User not found")
-			handlers.WriteErrorResponse(w, r, err, http.StatusNotFound)
+			WriteErrorResponse(w, r, err, http.StatusNotFound)
 			return
 		case errors.Is(err, services.WrongPasswordErr):
-			handlers.WriteErrorResponse(w, r, err, http.StatusNotFound)
+			WriteErrorResponse(w, r, err, http.StatusNotFound)
 			return
 		default:
 			h.logger.Error().Stack().Err(err).Msg("unhandled error")
-			handlers.WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+			WriteErrorResponse(w, r, err, http.StatusInternalServerError)
 			return
 		}
 	}
@@ -123,17 +122,17 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(response)
 }
 
-func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+func (h *authHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	refreshToken, err := r.Cookie("refresh_token")
 	if err != nil {
 		switch {
 		case errors.Is(err, http.ErrNoCookie):
 			h.logger.Error().Stack().Err(err).Msg("no refresh_token cookie found")
-			handlers.WriteErrorResponse(w, r, err, http.StatusUnauthorized)
+			WriteErrorResponse(w, r, err, http.StatusUnauthorized)
 			return
 		default:
 			h.logger.Error().Stack().Err(err).Msg("unhandled error")
-			handlers.WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+			WriteErrorResponse(w, r, err, http.StatusInternalServerError)
 			return
 		}
 	}
@@ -141,7 +140,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	err = h.service.Logout(r.Context(), refreshToken.Value)
 	if err != nil {
 		h.logger.Error().Stack().Err(err).Msg("unhandled error")
-		handlers.WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+		WriteErrorResponse(w, r, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -155,17 +154,17 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
+func (h *authHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	refreshToken, err := r.Cookie("refresh_token")
 	if err != nil {
 		switch {
 		case errors.Is(err, http.ErrNoCookie):
 			h.logger.Error().Stack().Err(err).Msg("no refresh_token cookie found")
-			handlers.WriteErrorResponse(w, r, err, http.StatusUnauthorized)
+			WriteErrorResponse(w, r, err, http.StatusUnauthorized)
 			return
 		default:
 			h.logger.Error().Stack().Err(err).Msg("unhandled error")
-			handlers.WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+			WriteErrorResponse(w, r, err, http.StatusInternalServerError)
 			return
 		}
 	}
@@ -175,19 +174,19 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, services.TokenExpiredErr):
 			h.logger.Error().Stack().Err(err).Msg("refresh token expired")
-			handlers.WriteErrorResponse(w, r, err, http.StatusUnauthorized)
+			WriteErrorResponse(w, r, err, http.StatusUnauthorized)
 			return
 		case errors.Is(err, services.InvalidTokenErr):
 			h.logger.Error().Stack().Err(err).Msg("invalid token")
-			handlers.WriteErrorResponse(w, r, err, http.StatusUnauthorized)
+			WriteErrorResponse(w, r, err, http.StatusUnauthorized)
 			return
 		case errors.Is(err, storage.NotFoundTokenErr):
 			h.logger.Error().Stack().Err(err).Msg("token not found")
-			handlers.WriteErrorResponse(w, r, err, http.StatusUnauthorized)
+			WriteErrorResponse(w, r, err, http.StatusUnauthorized)
 			return
 		default:
 			h.logger.Error().Stack().Err(err).Msg("unhandled error")
-			handlers.WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+			WriteErrorResponse(w, r, err, http.StatusInternalServerError)
 			return
 		}
 	}

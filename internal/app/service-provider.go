@@ -7,7 +7,7 @@ import (
 	"github.com/petrkoval/social-network-back/internal/services"
 	"github.com/petrkoval/social-network-back/internal/storage"
 	"github.com/petrkoval/social-network-back/internal/transport/http"
-	"github.com/petrkoval/social-network-back/internal/transport/http/handlers/auth"
+	"github.com/petrkoval/social-network-back/internal/transport/http/handlers"
 	"github.com/petrkoval/social-network-back/pkg/db/postgres"
 	"github.com/rs/zerolog"
 )
@@ -17,7 +17,7 @@ type ServiceProvider struct {
 	logger      *zerolog.Logger
 	dbClient    *pgxpool.Pool
 	router      *http.Router
-	authHandler *auth.Handler
+	authHandler handlers.Handler
 }
 
 func NewServiceProvider() *ServiceProvider {
@@ -83,7 +83,7 @@ func (sp *ServiceProvider) initHandlers() {
 
 	s := sp.newAuthService()
 
-	authHandler := auth.NewAuthHandler(s, sp.logger)
+	authHandler := handlers.NewAuthHandler(s, sp.logger)
 
 	authHandler.MountOn(sp.router)
 }
