@@ -10,7 +10,7 @@ import (
 )
 
 type UserStorage struct {
-	client *pgxpool.Pool
+	client Client
 }
 
 func NewUserStorage(c *pgxpool.Pool) *UserStorage {

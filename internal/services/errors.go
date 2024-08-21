@@ -10,4 +10,6 @@ var (
 
 	UserExistsErr    = errors.New("user already exists")
 	WrongPasswordErr = errors.New("wrong password")
+
+	QueryParamParsingErr = errors.New("query parameter parsing error")
 )

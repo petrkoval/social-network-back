@@ -10,7 +10,7 @@ import (
 )
 
 type TokenStorage struct {
-	client *pgxpool.Pool
+	client Client
 }
 
 func NewTokenStorage(pool *pgxpool.Pool) *TokenStorage {

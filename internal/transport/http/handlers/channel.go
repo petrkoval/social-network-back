@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/petrkoval/social-network-back/internal/domain"
@@ -16,12 +17,12 @@ const (
 )
 
 type ChannelService interface {
-	FindAll() (*[]domain.Channel, error)
-	FindByUserID(userID string) (*[]domain.Channel, error)
-	FindByID(id string) (*domain.Channel, error)
-	Create(dto domain.CreateChannelDTO) (*domain.Channel, error)
-	Update(id string, dto domain.UpdateChannelDTO) (*domain.Channel, error)
-	Delete(id string) error
+	FindAll(ctx context.Context, limit, offset string) ([]*domain.Channel, error)
+	FindByUserID(ctx context.Context, userID string) ([]*domain.Channel, error)
+	FindByID(ctx context.Context, id string) (*domain.Channel, error)
+	Create(ctx context.Context, dto domain.CreateChannelDTO) (*domain.Channel, error)
+	Update(ctx context.Context, id string, dto domain.UpdateChannelDTO) (*domain.Channel, error)
+	Delete(ctx context.Context, id string) error
 }
 
 type channelHandler struct {
@@ -56,7 +57,12 @@ func (h *channelHandler) MountOn(router *http2.Router) {
 
 func (h *channelHandler) FindAll(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	entities, err := h.service.FindAll()
+	var (
+		limit  = chi.URLParam(r, "limit")
+		offset = chi.URLParam(r, "offset")
+	)
+
+	entities, err := h.service.FindAll(r.Context(), limit, offset)
 
 	if err != nil {
 		switch {
@@ -75,7 +81,7 @@ func (h *channelHandler) FindByUserID(w http.ResponseWriter, r *http.Request) {
 		userID = chi.URLParam(r, "id")
 	)
 
-	entities, err := h.service.FindByUserID(userID)
+	entities, err := h.service.FindByUserID(r.Context(), userID)
 
 	if err != nil {
 		switch {
@@ -94,7 +100,7 @@ func (h *channelHandler) FindByID(w http.ResponseWriter, r *http.Request) {
 		id = chi.URLParam(r, "id")
 	)
 
-	entity, err := h.service.FindByID(id)
+	entity, err := h.service.FindByID(r.Context(), id)
 
 	if err != nil {
 		switch {
@@ -115,7 +121,7 @@ func (h *channelHandler) Create(w http.ResponseWriter, r *http.Request) {
 		_      = json.NewDecoder(r.Body).Decode(&dto)
 	)
 
-	entity, err := h.service.Create(dto)
+	entity, err := h.service.Create(r.Context(), dto)
 
 	if err != nil {
 		switch {
@@ -136,7 +142,7 @@ func (h *channelHandler) Update(w http.ResponseWriter, r *http.Request) {
 		_   = json.NewDecoder(r.Body).Decode(&dto)
 	)
 
-	entity, err := h.service.Update(id, dto)
+	entity, err := h.service.Update(r.Context(), id, dto)
 
 	if err != nil {
 		switch {
@@ -155,7 +161,7 @@ func (h *channelHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		id = chi.URLParam(r, "id")
 	)
 
-	err := h.service.Delete(id)
+	err := h.service.Delete(r.Context(), id)
 
 	if err != nil {
 		switch {
