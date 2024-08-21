@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/petrkoval/social-network-back/internal/domain"
 	http2 "github.com/petrkoval/social-network-back/internal/transport/http"
@@ -19,7 +20,7 @@ type ChannelService interface {
 	FindByUserID(userID string) (*[]domain.Channel, error)
 	FindByID(id string) (*domain.Channel, error)
 	Create(dto domain.CreateChannelDTO) (*domain.Channel, error)
-	Update(userID string, dto domain.UpdateChannelDTO) (*domain.Channel, error)
+	Update(id string, dto domain.UpdateChannelDTO) (*domain.Channel, error)
 	Delete(id string) error
 }
 
@@ -40,41 +41,128 @@ func NewChannelHandler(s ChannelService, l *zerolog.Logger) Handler {
 }
 
 func (h *channelHandler) MountOn(router *http2.Router) {
-	h.router.Use(middlewares.Auth)
-
 	h.router.Get("/", h.FindAll)
-	h.router.Post("/", h.Create)
 
 	h.router.Route(channelUrl, func(r chi.Router) {
 		r.Get("/", h.FindByUserID)
 		r.Get("/", h.FindByID)
-		r.Put("/", h.Update)
-		r.Delete("/", h.Delete)
+		r.With(middlewares.Auth).Post("/", h.Create)
+		r.With(middlewares.Auth).Put("/", h.Update)
+		r.With(middlewares.Auth).Delete("/", h.Delete)
 	})
 
 	router.Mount(path, h.router)
 }
 
 func (h *channelHandler) FindAll(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	entities, err := h.service.FindAll()
 
+	if err != nil {
+		switch {
+		default:
+			WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(entities)
 }
 
 func (h *channelHandler) FindByUserID(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var (
+		userID = chi.URLParam(r, "id")
+	)
 
+	entities, err := h.service.FindByUserID(userID)
+
+	if err != nil {
+		switch {
+		default:
+			WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(entities)
 }
 
 func (h *channelHandler) FindByID(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var (
+		id = chi.URLParam(r, "id")
+	)
 
+	entity, err := h.service.FindByID(id)
+
+	if err != nil {
+		switch {
+		default:
+			WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(entity)
 }
 
 func (h *channelHandler) Create(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var (
+		userID = chi.URLParam(r, "id")
+		dto    = domain.CreateChannelDTO{UserID: userID}
+		_      = json.NewDecoder(r.Body).Decode(&dto)
+	)
 
+	entity, err := h.service.Create(dto)
+
+	if err != nil {
+		switch {
+		default:
+			WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+		}
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(entity)
 }
 
 func (h *channelHandler) Update(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var (
+		id  = chi.URLParam(r, "id")
+		dto = domain.UpdateChannelDTO{}
+		_   = json.NewDecoder(r.Body).Decode(&dto)
+	)
 
+	entity, err := h.service.Update(id, dto)
+
+	if err != nil {
+		switch {
+		default:
+			WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(entity)
 }
 
 func (h *channelHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var (
+		id = chi.URLParam(r, "id")
+	)
 
+	err := h.service.Delete(id)
+
+	if err != nil {
+		switch {
+		default:
+			WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+		}
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
