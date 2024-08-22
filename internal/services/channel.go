@@ -12,7 +12,7 @@ import (
 
 type ChannelStorage interface {
 	FindAll(ctx context.Context, limit, offset int) ([]*domain.Channel, error)
-	FindByUserID(ctx context.Context, serID string) ([]*domain.Channel, error)
+	FindByUserID(ctx context.Context, userID string) ([]*domain.Channel, error)
 	FindByID(ctx context.Context, id string) (*domain.Channel, error)
 	Create(ctx context.Context, dto domain.CreateChannelDTO) (*domain.Channel, error)
 	Update(ctx context.Context, id string, dto domain.UpdateChannelDTO) (*domain.Channel, error)
