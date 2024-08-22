@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/petrkoval/social-network-back/internal/domain"
+	"github.com/petrkoval/social-network-back/internal/services"
+	"github.com/petrkoval/social-network-back/internal/storage"
 	http2 "github.com/petrkoval/social-network-back/internal/transport/http"
 	"github.com/petrkoval/social-network-back/internal/transport/http/middlewares"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"net/http"
 )
@@ -48,7 +51,7 @@ func (h *channelHandler) MountOn(router *http2.Router) {
 		r.Get("/", h.FindByUserID)
 		r.Get("/", h.FindByID)
 		r.With(middlewares.Auth).Post("/", h.Create)
-		r.With(middlewares.Auth).Put("/", h.Update)
+		r.With(middlewares.Auth).Patch("/", h.Update)
 		r.With(middlewares.Auth).Delete("/", h.Delete)
 	})
 
@@ -66,6 +69,8 @@ func (h *channelHandler) FindAll(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		switch {
+		case errors.Is(err, services.QueryParamParsingErr):
+			WriteErrorResponse(w, r, err, http.StatusBadRequest)
 		default:
 			WriteErrorResponse(w, r, err, http.StatusInternalServerError)
 		}
@@ -104,6 +109,8 @@ func (h *channelHandler) FindByID(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		switch {
+		case errors.Is(err, storage.NotFoundChannelErr):
+			WriteErrorResponse(w, r, err, http.StatusNotFound)
 		default:
 			WriteErrorResponse(w, r, err, http.StatusInternalServerError)
 		}

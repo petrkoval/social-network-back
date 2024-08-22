@@ -13,11 +13,12 @@ import (
 )
 
 type ServiceProvider struct {
-	cfg         *config.Config
-	logger      *zerolog.Logger
-	dbClient    *pgxpool.Pool
-	router      *http.Router
-	authHandler handlers.Handler
+	cfg            *config.Config
+	logger         *zerolog.Logger
+	dbClient       *pgxpool.Pool
+	router         *http.Router
+	authHandler    handlers.Handler
+	channelHandler handlers.Handler
 }
 
 func NewServiceProvider() *ServiceProvider {
@@ -81,11 +82,14 @@ func (sp *ServiceProvider) initRouter() {
 func (sp *ServiceProvider) initHandlers() {
 	sp.logger.Debug().Msg("initializing handlers")
 
-	s := sp.newAuthService()
+	authService := sp.newAuthService()
+	channelService := sp.newChannelService()
 
-	authHandler := handlers.NewAuthHandler(s, sp.logger)
+	authHandler := handlers.NewAuthHandler(authService, sp.logger)
+	channelHandler := handlers.NewChannelHandler(channelService, sp.logger)
 
 	authHandler.MountOn(sp.router)
+	channelHandler.MountOn(sp.router)
 }
 
 func (sp *ServiceProvider) newAuthService() *services.AuthService {
@@ -98,4 +102,12 @@ func (sp *ServiceProvider) newAuthService() *services.AuthService {
 	tokenService := services.NewTokenService(tokenStorage, sp.logger, sp.cfg.Tokens)
 
 	return services.NewAuthService(tokenService, userService)
+}
+
+func (sp *ServiceProvider) newChannelService() handlers.ChannelService {
+	sp.logger.Debug().Msg("creating channel service")
+
+	s := storage.NewChannelStorage(sp.dbClient)
+
+	return services.NewChannelService(s, sp.logger, sp.cfg.Tokens)
 }
