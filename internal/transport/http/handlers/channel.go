@@ -28,14 +28,18 @@ type ChannelService interface {
 	Delete(ctx context.Context, id string) error
 }
 
+type tokenService interface {
+	VerifyAccessToken(accessToken string) (*domain.AuthUser, error)
+}
+
 type channelHandler struct {
-	tokenService *services.TokenService
+	tokenService tokenService
 	service      ChannelService
 	logger       *zerolog.Logger
 	router       *chi.Mux
 }
 
-func NewChannelHandler(s ChannelService, t *services.TokenService, l *zerolog.Logger) Handler {
+func NewChannelHandler(s ChannelService, t tokenService, l *zerolog.Logger) Handler {
 	r := chi.NewRouter()
 
 	return &channelHandler{
