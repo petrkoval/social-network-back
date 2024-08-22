@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5"
 	"github.com/petrkoval/social-network-back/internal/domain"
@@ -18,14 +19,21 @@ func NewChannelStorage(client Client) *ChannelStorage {
 
 func (c ChannelStorage) FindAll(ctx context.Context, limit, offset int) ([]*domain.Channel, error) {
 	var (
-		channels []*domain.Channel
+		channels = make([]*domain.Channel, 0)
 		err      error
 		query    = `SELECT * FROM channels LIMIT $1 OFFSET $2`
 	)
 
-	err = pgxscan.Select(ctx, c.client, &channels, query, limit, offset)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, errors.Wrap(err, "ChannelStorage.FindAll")
+	if limit == 0 {
+		err = pgxscan.Select(ctx, c.client, &channels, query, nil, offset)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.Wrap(err, "ChannelStorage.FindAll")
+		}
+	} else {
+		err = pgxscan.Select(ctx, c.client, &channels, query, limit, offset)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.Wrap(err, "ChannelStorage.FindAll")
+		}
 	}
 
 	return channels, nil
@@ -33,11 +41,12 @@ func (c ChannelStorage) FindAll(ctx context.Context, limit, offset int) ([]*doma
 
 func (c ChannelStorage) FindByUserID(ctx context.Context, userID string) ([]*domain.Channel, error) {
 	var (
-		channels []*domain.Channel
+		channels = make([]*domain.Channel, 0)
 		err      error
 		query    = `SELECT * FROM channels WHERE user_id = $1`
 	)
 
+	fmt.Println(userID)
 	err = pgxscan.Select(ctx, c.client, &channels, query, userID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, errors.Wrap(err, "ChannelStorage.FindByUserID")
@@ -48,7 +57,7 @@ func (c ChannelStorage) FindByUserID(ctx context.Context, userID string) ([]*dom
 
 func (c ChannelStorage) FindByID(ctx context.Context, id string) (*domain.Channel, error) {
 	var (
-		channel *domain.Channel
+		channel domain.Channel
 		err     error
 		query   = `SELECT * FROM channels WHERE channel_id = $1`
 	)
@@ -63,12 +72,12 @@ func (c ChannelStorage) FindByID(ctx context.Context, id string) (*domain.Channe
 		}
 	}
 
-	return channel, nil
+	return &channel, nil
 }
 
 func (c ChannelStorage) Create(ctx context.Context, dto domain.CreateChannelDTO) (*domain.Channel, error) {
 	var (
-		channel *domain.Channel
+		channel domain.Channel
 		query   = `INSERT INTO channels (user_id, title, description) VALUES ($1, $2, $3) RETURNING *`
 	)
 
@@ -83,27 +92,27 @@ func (c ChannelStorage) Create(ctx context.Context, dto domain.CreateChannelDTO)
 		return nil, errors.Wrap(err, "ChannelStorage.Create")
 	}
 
-	return channel, nil
+	return &channel, nil
 }
 
 func (c ChannelStorage) Update(ctx context.Context, id string, dto domain.UpdateChannelDTO) (*domain.Channel, error) {
 	var (
-		channel *domain.Channel
+		channel domain.Channel
 		query   = `UPDATE channels SET title = $1, description = $2 WHERE channel_id = $3 RETURNING *`
 	)
 
-	rows, err := c.client.Query(ctx, query, id, dto.Title, dto.Description)
+	rows, err := c.client.Query(ctx, query, dto.Title, dto.Description, id)
 	if err != nil {
-		return nil, errors.Wrap(err, "ChannelStorage.Create")
+		return nil, errors.Wrap(err, "ChannelStorage.Update")
 	}
 	defer rows.Close()
 
 	err = pgxscan.ScanOne(&channel, rows)
 	if err != nil {
-		return nil, errors.Wrap(err, "ChannelStorage.Create")
+		return nil, errors.Wrap(err, "ChannelStorage.Update")
 	}
 
-	return channel, nil
+	return &channel, nil
 }
 
 func (c ChannelStorage) Delete(ctx context.Context, id string) error {

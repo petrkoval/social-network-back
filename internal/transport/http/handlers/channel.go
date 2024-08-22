@@ -15,8 +15,9 @@ import (
 )
 
 const (
-	path       = "/channels"
-	channelUrl = "/{id}"
+	path           = "/channels"
+	channelUrl     = "/user"
+	channelByIDUrl = "/{id}"
 )
 
 type ChannelService interface {
@@ -52,13 +53,13 @@ func NewChannelHandler(s ChannelService, t tokenService, l *zerolog.Logger) Hand
 
 func (h *channelHandler) MountOn(router *http2.Router) {
 	h.router.Get("/", h.FindAll)
+	h.router.Get(channelUrl, h.FindByUserID)
 
 	authMiddleware := func(next http.Handler) http.Handler {
 		return middlewares.Auth(next, h.tokenService, h.logger)
 	}
 
-	h.router.Route(channelUrl, func(r chi.Router) {
-		r.Get("/", h.FindByUserID)
+	h.router.Route(channelByIDUrl, func(r chi.Router) {
 		r.Get("/", h.FindByID)
 		r.With(authMiddleware).Post("/", h.Create)
 		r.With(authMiddleware).Patch("/", h.Update)
@@ -71,8 +72,9 @@ func (h *channelHandler) MountOn(router *http2.Router) {
 func (h *channelHandler) FindAll(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var (
-		limit  = chi.URLParam(r, "limit")
-		offset = chi.URLParam(r, "offset")
+		query  = r.URL.Query()
+		limit  = query.Get("limit")
+		offset = query.Get("offset")
 	)
 
 	entities, err := h.service.FindAll(r.Context(), limit, offset)
@@ -81,8 +83,11 @@ func (h *channelHandler) FindAll(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, services.QueryParamParsingErr):
 			WriteErrorResponse(w, r, err, http.StatusBadRequest)
+			return
 		default:
 			WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+			h.logger.Error().Stack().Err(err).Msg("unhandled error")
+			return
 		}
 	}
 
@@ -93,7 +98,7 @@ func (h *channelHandler) FindAll(w http.ResponseWriter, r *http.Request) {
 func (h *channelHandler) FindByUserID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	var (
-		userID = chi.URLParam(r, "id")
+		userID = r.URL.Query().Get("user_id")
 	)
 
 	entities, err := h.service.FindByUserID(r.Context(), userID)
@@ -102,6 +107,8 @@ func (h *channelHandler) FindByUserID(w http.ResponseWriter, r *http.Request) {
 		switch {
 		default:
 			WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+			h.logger.Error().Stack().Err(err).Msg("unhandled error")
+			return
 		}
 	}
 
@@ -121,8 +128,11 @@ func (h *channelHandler) FindByID(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, storage.NotFoundChannelErr):
 			WriteErrorResponse(w, r, err, http.StatusNotFound)
+			return
 		default:
 			WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+			h.logger.Error().Stack().Err(err).Msg("unhandled error")
+			return
 		}
 	}
 
@@ -144,6 +154,8 @@ func (h *channelHandler) Create(w http.ResponseWriter, r *http.Request) {
 		switch {
 		default:
 			WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+			h.logger.Error().Stack().Err(err).Msg("unhandled error")
+			return
 		}
 	}
 
@@ -165,6 +177,8 @@ func (h *channelHandler) Update(w http.ResponseWriter, r *http.Request) {
 		switch {
 		default:
 			WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+			h.logger.Error().Stack().Err(err).Msg("unhandled error")
+			return
 		}
 	}
 
@@ -184,6 +198,8 @@ func (h *channelHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		switch {
 		default:
 			WriteErrorResponse(w, r, err, http.StatusInternalServerError)
+			h.logger.Error().Stack().Err(err).Msg("unhandled error")
+			return
 		}
 	}
 

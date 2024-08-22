@@ -54,7 +54,7 @@ func (s *TokenService) GenerateTokens(user domain.AuthUser) (accessToken, refres
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "token service",
 			Subject:   user.ID,
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second * 15)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24 * 30)),
 		},
 	}
 
