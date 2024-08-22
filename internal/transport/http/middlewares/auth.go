@@ -2,35 +2,47 @@ package middlewares
 
 import (
 	"context"
-	"errors"
-	"github.com/petrkoval/social-network-back/internal/config"
-	"github.com/petrkoval/social-network-back/internal/logger"
-	"github.com/petrkoval/social-network-back/internal/services"
-	"github.com/petrkoval/social-network-back/internal/transport/http/handlers"
+	"encoding/json"
+	"github.com/petrkoval/social-network-back/internal/domain"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"net/http"
 	"strings"
 )
 
-func Auth(next http.Handler) http.Handler {
-	l := logger.NewLogger()
-	cfg, err := config.MustLoad()
+type errorMessage struct {
+	StatusCode int    `json:"status_code,omitempty"`
+	Message    string `json:"message,omitempty"`
+	URL        string `json:"url,omitempty"`
+}
 
-	if err != nil {
-		l.Panic().Err(err).Msg("error loading config in auth middleware")
-	}
+func writeErrorResponse(w http.ResponseWriter, r *http.Request, err error, statusCode int) {
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(errorMessage{
+		StatusCode: statusCode,
+		Message:    err.Error(),
+		URL:        r.Host + r.URL.Path,
+	})
+}
 
-	s := services.NewTokenService(nil, l, cfg.Tokens)
+type service interface {
+	VerifyAccessToken(accessToken string) (*domain.AuthUser, error)
+}
+
+func Auth(next http.Handler, s service, l *zerolog.Logger) http.Handler {
 
 	l.Debug().Msg("init auth middleware")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.Header.Get("Authorization")
 		if token == "" {
-			handlers.WriteErrorResponse(w, r, errors.New("authorization header is empty"), http.StatusUnauthorized)
+			writeErrorResponse(w, r, errors.New("authorization header is empty"), http.StatusUnauthorized)
+			return
 		}
 
 		user, err := s.VerifyAccessToken(strings.Split(token, " ")[1])
 		if err != nil {
-			handlers.WriteErrorResponse(w, r, err, http.StatusUnauthorized)
+			writeErrorResponse(w, r, errors.New("authorization header is empty"), http.StatusUnauthorized)
+			return
 		}
 
 		ctx := context.WithValue(r.Context(), "user", user)

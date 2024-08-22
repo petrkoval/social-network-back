@@ -29,30 +29,36 @@ type ChannelService interface {
 }
 
 type channelHandler struct {
-	service ChannelService
-	logger  *zerolog.Logger
-	router  *chi.Mux
+	tokenService *services.TokenService
+	service      ChannelService
+	logger       *zerolog.Logger
+	router       *chi.Mux
 }
 
-func NewChannelHandler(s ChannelService, l *zerolog.Logger) Handler {
+func NewChannelHandler(s ChannelService, t *services.TokenService, l *zerolog.Logger) Handler {
 	r := chi.NewRouter()
 
 	return &channelHandler{
-		service: s,
-		logger:  l,
-		router:  r,
+		tokenService: t,
+		service:      s,
+		logger:       l,
+		router:       r,
 	}
 }
 
 func (h *channelHandler) MountOn(router *http2.Router) {
 	h.router.Get("/", h.FindAll)
 
+	authMiddleware := func(next http.Handler) http.Handler {
+		return middlewares.Auth(next, h.tokenService, h.logger)
+	}
+
 	h.router.Route(channelUrl, func(r chi.Router) {
 		r.Get("/", h.FindByUserID)
 		r.Get("/", h.FindByID)
-		r.With(middlewares.Auth).Post("/", h.Create)
-		r.With(middlewares.Auth).Patch("/", h.Update)
-		r.With(middlewares.Auth).Delete("/", h.Delete)
+		r.With(authMiddleware).Post("/", h.Create)
+		r.With(authMiddleware).Patch("/", h.Update)
+		r.With(authMiddleware).Delete("/", h.Delete)
 	})
 
 	router.Mount(path, h.router)

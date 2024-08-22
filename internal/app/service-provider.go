@@ -82,24 +82,30 @@ func (sp *ServiceProvider) initRouter() {
 func (sp *ServiceProvider) initHandlers() {
 	sp.logger.Debug().Msg("initializing handlers")
 
-	authService := sp.newAuthService()
+	tokenService := sp.newTokenService()
+	authService := sp.newAuthService(tokenService)
 	channelService := sp.newChannelService()
 
 	authHandler := handlers.NewAuthHandler(authService, sp.logger)
-	channelHandler := handlers.NewChannelHandler(channelService, sp.logger)
+	channelHandler := handlers.NewChannelHandler(channelService, tokenService, sp.logger)
 
 	authHandler.MountOn(sp.router)
 	channelHandler.MountOn(sp.router)
 }
 
-func (sp *ServiceProvider) newAuthService() *services.AuthService {
+func (sp *ServiceProvider) newTokenService() *services.TokenService {
+	sp.logger.Debug().Msg("creating token service")
+
+	tokenStorage := storage.NewTokenStorage(sp.dbClient)
+	return services.NewTokenService(tokenStorage, sp.logger, sp.cfg.Tokens)
+}
+
+func (sp *ServiceProvider) newAuthService(tokenService *services.TokenService) *services.AuthService {
 	sp.logger.Debug().Msg("creating auth service")
 
 	userStorage := storage.NewUserStorage(sp.dbClient)
-	tokenStorage := storage.NewTokenStorage(sp.dbClient)
 
 	userService := services.NewUserService(userStorage, sp.logger)
-	tokenService := services.NewTokenService(tokenStorage, sp.logger, sp.cfg.Tokens)
 
 	return services.NewAuthService(tokenService, userService)
 }
